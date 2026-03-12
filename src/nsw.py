@@ -8,6 +8,9 @@ def cosine_distance(v1, v2):
     cosine_sim = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
     return 1 - cosine_sim
 
+def euclidean_distance(v1, v2):
+    return np.sqrt(np.sum((v1 - v2) ** 2))
+
 
 class Node():
     def __init__(self,
