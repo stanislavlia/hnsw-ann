@@ -107,6 +107,53 @@ class NSW():
         results = sorted(results)
         return results
 
+    
+    def _select_neighbors(self, candidates: List[tuple], M: int) -> List[Node]:
+
+        #sort by distance
+        candidates = sorted(candidates) #assume first in tuple is distance
+
+        selected_ids = []
+
+        if not candidates:
+            return []
+        
+        #add first unconditionally
+        selected_ids.append(candidates[0][1])
+
+        #run diversity check for remaining candidates
+        # if candidate C is closer to new node than to any other selected nodes - accept,
+        # otherwise reject
+
+        for dist_to_q, node_id in candidates[1:]:
+
+            if len(selected_ids) >= M:
+                break
+
+            candidate_node = self.nodes[node_id]
+
+            accept = True
+
+            for selected_node_id in selected_ids:
+                selected_node = self.nodes[selected_node_id]
+
+                sel_to_candidate_d = self.distance_func(candidate_node.vector, selected_node.vector)
+
+                if sel_to_candidate_d < dist_to_q:
+                    
+                    #don't take this node since it comes from direction we already have in selected nodes
+                    accept = False
+                    break
+                
+            
+            if accept:
+                selected_ids.append(node_id)
+
+        selected_nodes = [self.nodes[id] for id in selected_ids]
+
+        return selected_nodes
+
+
 
 
     
