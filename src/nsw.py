@@ -16,7 +16,7 @@ class Node():
         
         self.vector = vector
         self.id = id
-        self.neighbors = set()
+        self.neighbors = set() #set of str
     
     def add_neighbor(self, node):
         self.neighbors.add(node)
@@ -154,6 +154,47 @@ class NSW():
         return selected_nodes
 
 
+    def insert(self, node: Node):
+        # Register the new node in the graph
+        self.nodes[node.id] = node
+
+        # If this is the first node, set it as the entry point — nothing to connect to yet
+        if self.entry_point is None:
+            self.entry_point = node.id
+            return
+
+        # Search the graph for the ef_construction closest existing nodes to the new node
+        # These are our pool of candidates to connect to
+        candidates = self._search(query=node.vector, entry_id=self.entry_point, ef=self.ef_construction)
+
+        # From candidates, select the best M neighbors using the diversity heuristic
+        # This ensures connections spread in different directions, not just one dense cluster
+        neighbors: List[Node] = self._select_neighbors(candidates, M=self.M)
+
+        for neighbor in neighbors:
+            # Connect new node → neighbor
+            node.add_neighbor(neighbor.id)
+
+            # Connect neighbor → new node (bidirectional — graph must work in both directions)
+            neighbor.add_neighbor(node.id)
+
+            # After adding a new connection, check if this neighbor exceeded the max allowed
+            if len(neighbor.neighbors) > self.Mmax:
+
+                # Build a candidate list from this neighbor's current connections
+                # We need distances so _select_neighbors can rank and apply the heuristic
+                current_neighbors_with_distance = [
+                    (self.distance_func(neighbor.vector, self.nodes[nid].vector), nid)
+                    for nid in neighbor.neighbors
+                ]
+
+                # Re-run neighbor selection to pick the best M — pruning the weakest connections
+                selected_neighbors = self._select_neighbors(current_neighbors_with_distance, M=self.M)
+                selected_neighbors_ids = [n.id for n in selected_neighbors]
+
+                # Replace neighbor's connection set with the pruned result
+                neighbor.neighbors = set(selected_neighbors_ids)
+        
 
 
     
