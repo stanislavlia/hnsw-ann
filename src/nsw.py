@@ -196,6 +196,8 @@ class NSW():
                 neighbor.neighbors = set(selected_neighbors_ids)
         
 
-
-    
+    def search(self, query, k, ef=50):
+        if self.entry_point is None:
+            return []
+        return self._search(query, self.entry_point, max(ef, k))[:k]
 
