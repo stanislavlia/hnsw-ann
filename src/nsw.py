@@ -201,3 +201,84 @@ class NSW():
             return []
         return self._search(query, self.entry_point, max(ef, k))[:k]
 
+
+
+class HNSW():
+    def __init__(self, M, ef_construction, distance_func):
+        
+        self.M = M
+        self.layers: List[NSW] = []
+        self.ef_construction = ef_construction
+        self.distance_func = distance_func
+        self.entry_point_id: int | None = None   # top layer entry point
+        self.mL = 1 / np.log(M)                 # level multiplier
+
+        self.top_level = 0
+
+        self.current_id = 0
+
+    def get_random_level(self) -> int:
+        level = int(-np.log(np.random.random()) * self.mL)
+        return level
+    
+    def insert(self, vector):
+        
+        id = self.current_id
+        self.current_id += 1
+
+        node = Node(vector=vector, id=id)
+        
+        level = self.get_random_level()
+
+        #make sure enough layers exist
+        while len(self.layers) <= level:
+            self.layers.append(     
+                NSW(M=self.M, ef_construction=self.ef_construction, distance_func=self.distance_func)
+            )
+
+        #first node in HNSW handled separately
+        if self.entry_point_id is None:
+            for i in range(level + 1):
+                self.layers[i].insert(node=node)
+            self.entry_point_id = id
+            self.top_level = level
+            return
+
+        
+        if level > self.top_level:
+           self.top_level = level
+           self.entry_point_id = node.id  # new top level needs a new entry point
+
+        
+
+        #hierarchically traverse graph on each level to get to closest point for insert
+        entry_id = self.entry_point_id
+
+        #search from coarse level to granular level
+        for layer_idx in range(len(self.layers) - 1, -1, -1): 
+
+            if layer_idx > level:
+               #pass best entry point down as entry point
+               search_results = self.layers[layer_idx]._search(query=vector,
+                                                               entry_id=entry_id,
+                                                               ef=1) #just find entry point
+               
+               entry_id = search_results[0][1] #id of closest node on this level
+
+            else:
+               #insert node to this level using entry point from level above
+               
+               #set entry point for this level
+               self.layers[layer_idx].entry_point = entry_id
+               self.layers[layer_idx].insert(node=node)
+
+               search_results = self.layers[layer_idx]._search(query=vector,
+                                                               entry_id=entry_id,
+                                                               ef=1) #just find entry point
+               entry_id = search_results[0][1]
+
+               
+    
+
+
+
