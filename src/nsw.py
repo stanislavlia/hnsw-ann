@@ -263,7 +263,7 @@ class HNSW():
                                                                entry_id=entry_id,
                                                                ef=1) #just find entry point
                
-               entry_id = search_results[0][1] #id of closest node on this level
+               entry_id = search_results[0][1]
 
             else:
                #insert node to this level using entry point from level above
@@ -278,7 +278,30 @@ class HNSW():
                entry_id = search_results[0][1]
 
                
-    
+    def search(self, vector, k, ef=100):
 
 
+        #hierarchically traverse graph on each level to get to closest point for insert
+        entry_id = self.entry_point_id
 
+        #search from coarse level to granular level
+        for layer_idx in range(len(self.layers) - 1, -1, -1):
+
+            if layer_idx > 0:
+                #navigate closer to query vector
+                #pass best entry point down as entry point
+                search_results = self.layers[layer_idx]._search(query=vector,
+                                                               entry_id=entry_id,
+                                                               ef=1) #just find entry point
+               
+                entry_id = search_results[0][1]
+
+            else:
+                #search with full width of beam search
+                search_results = self.layers[layer_idx]._search(query=vector,
+                                                                entry_id=entry_id,
+                                                                ef=ef)[:k]
+
+
+        final_result_nodes = [self.layers[0].nodes[nid] for dist, nid in search_results]
+        return final_result_nodes
